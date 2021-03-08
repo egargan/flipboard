@@ -638,8 +638,14 @@ class Flap {
     unrotate(onTransitionEndCallback) {
         this.svgElement.style.transform = 'rotate3d(-1, 1, 0, 0deg)';
 
+        // 'once: true' tells the browser to remove the listener for us after
+        // it's first run
         if (onTransitionEndCallback != null) {
-            this.svgElement.ontransitionend = onTransitionEndCallback;
+            this.svgElement.addEventListener(
+                'transitionend',
+                onTransitionEndCallback,
+                { once: 'true' }
+            );
         }
     }
 
