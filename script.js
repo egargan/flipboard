@@ -78,6 +78,9 @@ class Flipboard {
         const containerDiv = document.createElement('div');
 
         const patternsDiv = document.createElement('div');
+        patternsDiv.style.height = '0px';
+        patternsDiv.style.width = '0px';
+
         const gridDiv = this.createGridDiv(numCols, '4px');
 
         containerDiv.appendChild(patternsDiv);
