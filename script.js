@@ -86,6 +86,12 @@ class SvgImageGrid {
     getCellPatternId(col, row) {
         return this.gridId + '-' + col + '-' + row;
     }
+
+    // Gets the string that's used to apply the (col, row)-th segment of the image
+    // to an SVG element
+    getFillString(col, row) {
+        return 'url(#' + this.getCellPatternId(col, row) + ')';
+    }
 }
 
 // A grid of flipbook-style tiles that together display a series of images,
@@ -144,8 +150,8 @@ class Flipboard {
         this.numCols = numCols;
         this.numRows = numRows;
 
-        this.setCurrentImage(this.imageGrids[0]);
-        this.setNextImage(this.imageGrids[1]);
+        this.setCurrentFill(this.imageGrids[0]);
+        this.setNextFill(this.imageGrids[1]);
     }
 
     createPadGrid(numCols, numRows, padSize, cornerRadius) {
@@ -207,20 +213,20 @@ class Flipboard {
         }
     }
 
-    setCurrentImage(svgImageGrid) {
+    setCurrentFill(filler) {
         for (let row = 0; row < this.numRows; row++) {
             for (let col = 0; col < this.numCols; col++) {
-                const cellFillPatternId = svgImageGrid.getCellPatternId(col, row);
-                this.padGrid[col][row].setCurrentPageFill('url(#' + cellFillPatternId + ')');
+                const fillString = filler.getFillString(col, row);
+                this.padGrid[col][row].setCurrentPageFill(fillString);
             }
         }
     }
 
-    setNextImage(svgImageGrid) {
+    setNextFill(filler) {
         for (let row = 0; row < this.numRows; row++) {
             for (let col = 0; col < this.numCols; col++) {
-                const cellFillPatternId = svgImageGrid.getCellPatternId(col, row);
-                this.padGrid[col][row].setNextPageFill('url(#' + cellFillPatternId + ')');
+                const fillString = filler.getFillString(col, row);
+                this.padGrid[col][row].setNextPageFill(fillString);
             }
         }
     }
