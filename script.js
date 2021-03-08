@@ -36,9 +36,17 @@ class FlipPad {
         this.setCurrentPageColor('red');
 
         this.setRestingFlapDepths();
+
+        this.isFlipping = false;
     }
 
     flip() {
+        if (this.isFlipping) {
+            return;
+        }
+
+        this.isFlipping = true;
+
         // Once flip transition completes, silently move now-hidden current flaps
         // into next flap, so 'recycling' them and using them as the next flaps
         const onTransitionEndCallback = () => {
@@ -52,6 +60,8 @@ class FlipPad {
             this.swapFlapReferences();
 
             this.setRestingFlapDepths();
+
+            this.isFlipping = false;
         }
 
         this.currentTopFlap.enableTransition();
