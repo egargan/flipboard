@@ -1,7 +1,14 @@
 // Segments a given image into a grid of square tiles, creating a list of
 // SVG 'patterns' to be referenced in each tile in a grid of SVG elements
 class SvgImageGrid {
-    constructor(imageUrl, cellSize, numCols, numRows, gridGap, gridId) {
+    constructor({
+        imageUrl,
+        cellSize,
+        numCols,
+        numRows,
+        gridGap,
+        gridId = Math.random()
+    }) {
         const imageWidth = numCols * cellSize + ((numCols - 1) * gridGap);
         const imageHeight = numRows * cellSize + ((numRows - 1) * gridGap);
 
@@ -84,7 +91,14 @@ class SvgImageGrid {
 // A grid of flipbook-style tiles that together display a series of images,
 // shown one after the other, transitioned between by 'flipping' the flipbook cells
 class Flipboard {
-    constructor(numCols, numRows, padSize, gridGap, cornerRadius, imageUrlList) {
+    constructor({
+        numCols,
+        numRows,
+        imageUrlList,
+        padSize = 100,
+        gridGap = 4,
+        cornerRadius = 5,
+    }) {
         const containerDiv = document.createElement('div');
 
         const patternsDiv = document.createElement('div');
@@ -109,9 +123,14 @@ class Flipboard {
 
         for (let i = 0; i < imageUrlList.length; i++) {
             // TODO: improve ID naming here - use filename?
-            const svgImageGrid = new SvgImageGrid(
-                imageUrlList[i], padSize, numCols, numRows, gridGap, i
-            );
+            const svgImageGrid = new SvgImageGrid({
+                imageUrl: imageUrlList[i],
+                cellSize: padSize,
+                numCols: numCols,
+                numRows: numRows,
+                gridGap: gridGap,
+                gridId: i
+            });
 
             const patternsDefs = svgImageGrid.createPatternsDefs();
             patternsDiv.appendChild(patternsDefs);
@@ -468,8 +487,14 @@ class Flap {
 
 const container = document.getElementsByClassName('container');
 
-const imageUrls = ['image/1.jpg', 'image/2.jpg', 'image/3.jpg', 'image/4.jpg'];
-const flipboard = new Flipboard(6, 4, 100, 3, 5, imageUrls);
+const flipboard = new Flipboard({
+    numCols: 6,
+    numRows: 4,
+    imageUrlList: ['image/1.jpg', 'image/2.jpg', 'image/3.jpg', 'image/4.jpg'],
+    padSize: 100,
+    gridGap: 4,
+    cornerRadius: 5
+});
 
 container[0].appendChild(flipboard.getElement());
 
