@@ -1,76 +1,200 @@
+// Segments a given image into a grid of square tiles, creating a list of
+// SVG 'patterns' to be referenced in each tile in a grid of SVG elements
+class SvgImageGrid {
+    constructor(imageUrl, cellSize, numCols, numRows, gridId) {
+        const imageWidth = numCols * cellSize;
+        const imageHeight = numRows * cellSize;
+
+        this.patternImage = this.createPatternImage(
+            imageUrl, imageWidth, imageHeight
+        );
+
+        this.gridId = gridId;
+
+        this.numCols = numCols;
+        this.numRows = numRows;
+    }
+
+    // Creates the list of pattern elements for each tile in the grid-segmented
+    // image, and returns them in an SVG container element
+    createPatternsDefs() {
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+
+        svg.setAttribute('width', 0);
+        svg.setAttribute('height', 0);
+
+        svg.appendChild(defs);
+
+        for (let col = 0; col < this.numCols; col++) {
+            for (let row = 0; row < this.numRows; row++) {
+                const pattern = document.createElementNS(
+                    'http://www.w3.org/2000/svg',
+                    'pattern'
+                );
+
+                pattern.id = this.getCellPatternId(col, row);
+
+                pattern.setAttribute('x', '-' + col);
+                pattern.setAttribute('y', '-' + row);
+
+                pattern.setAttribute('width', this.numCols);
+                pattern.setAttribute('height', this.numRows);
+
+                pattern.appendChild(this.patternImage.cloneNode(false));
+
+                defs.appendChild(pattern);
+            }
+        }
+
+        return svg;
+    }
+
+    // Creates a full-size SVG image element given an image URL,
+    // sized to the given dimensions
+    createPatternImage(imageUrl, width, height) {
+        const patternImage = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+
+        patternImage.setAttribute('href', imageUrl);
+
+        patternImage.setAttribute('preserveAspectRatio', 'none');
+        patternImage.setAttribute('width', width);
+        patternImage.setAttribute('height', height);
+
+        return patternImage;
+    }
+
+    // Given a row and column index, returns the element ID of the pattern that
+    // displays that cell's portion of the overall image
+    getCellPatternId(col, row) {
+        return this.gridId + '-' + col + '-' + row;
+    }
+}
+
+// A grid of flipbook-style tiles that together display a series of images,
+// shown one after the other, transitioned between by 'flipping' the flipbook cells
 class Flipboard {
-    constructor(numCols, numRows, padSize) {
-        const container = document.createElement('div');
-        container.style.display = 'grid';
+    constructor(numCols, numRows, padSize, imageUrlList) {
+        const containerDiv = document.createElement('div');
 
-        container.style.gridTemplateColumns = 'repeat(' + numCols + ', min-content)';
-        container.style.columnGap = '5px';
-        container.style.rowGap = '5px';
+        const patternsDiv = document.createElement('div');
+        const gridDiv = this.createGridDiv(numCols, '4px');
 
-        const numCells = numCols * numRows;
+        containerDiv.appendChild(patternsDiv);
+        containerDiv.appendChild(gridDiv);
+
+        const padGrid = this.createPadGrid(numCols, numRows, padSize);
+
+        for (let row = 0; row < numRows; row++) {
+            for (let col = 0; col < numCols; col++) {
+                const pad = padGrid[col][row];
+                gridDiv.appendChild(pad.getElement());
+            }
+        }
+
+        this.imageGrids = [];
+
+        for (let i = 0; i < imageUrlList.length; i++) {
+            // TODO: improve ID naming here - use filename?
+            const svgImageGrid = new SvgImageGrid(
+                imageUrlList[i], padSize, numCols, numRows, i
+            );
+
+            const patternsDefs = svgImageGrid.createPatternsDefs();
+            patternsDiv.appendChild(patternsDefs);
+
+            this.imageGrids.push(svgImageGrid);
+        }
+
+        this.containerDiv = containerDiv;
+        this.padGrid = padGrid;
+
+        this.numCols = numCols;
+        this.numRows = numRows;
+
+        this.setCurrentImage(this.imageGrids[0]);
+        this.setNextImage(this.imageGrids[1]);
+    }
+
+    createPadGrid(numCols, numRows, padSize) {
         const padGrid = [];
 
+        // Iterate over rows + columns 'in reverse', i.e. for each row in each column,
+        // so we can lookup cells in the padGrid like 'padGrid[x][y]'
         for (let col = 0; col < numCols; col++) {
             const rowArray = [];
 
             for (let row = 0; row < numRows; row++) {
                 const pad = new FlipPad(padSize, padSize);
-
-                container.appendChild(pad.getElement());
                 rowArray.push(pad);
             }
 
             padGrid.push(rowArray);
         }
 
-        this.container = container;
-        this.padGrid = padGrid;
+        return padGrid;
+    }
+
+    createGridDiv(numCols, cellGap) {
+        const gridDiv = document.createElement('div');
+
+        gridDiv.style.display = 'grid';
+
+        // Allows additional styling, e.g. margin
+        gridDiv.classList.add('flipboard');
+
+        gridDiv.style.gridTemplateColumns = 'repeat(' + numCols + ', min-content)';
+        gridDiv.style.columnGap = cellGap;
+        gridDiv.style.rowGap = cellGap;
+
+        return gridDiv;
     }
 
     flip() {
-        const nextColor = getRandomColor();
+        const numPads = this.numRows * this.numCols;
+        let numPadsFlipped = 0;
 
         const onLastPadFlippedCallback = () => {
-            this.setNextColor(nextColor);
+            // TODO: change next image to next in series here?
         }
-
-        const numPads = this.getNumPads();
-        let numPadsFlipped = 0;
 
         for (let rowArray of this.padGrid) {
             for (let flipPad of rowArray) {
                 numPadsFlipped++;
 
-                // When the last pad is flipped, have it call our callback
-                if (numPadsFlipped >= numPads) {
-                    flipPad.flip(onLastPadFlippedCallback);
-                }
-                else {
-                    flipPad.flip();
-                }
+                // TODO: have this 'cascading flip' effect be configurable
+                window.setTimeout(() => {
+                    if (numPadsFlipped >= numPads) {
+                        flipPad.flip(onLastPadFlippedCallback);
+                    }
+                    else {
+                        flipPad.flip();
+                    }
+                }, (Math.random() * 400) + (numPadsFlipped * 40));
             }
         }
     }
 
-    setNextColor(color) {
-        for (let rowArray of this.padGrid) {
-            for (let flipPad of rowArray) {
-                flipPad.setNextPageColor(color);
+    setCurrentImage(svgImageGrid) {
+        for (let row = 0; row < this.numRows; row++) {
+            for (let col = 0; col < this.numCols; col++) {
+                const cellFillPatternId = svgImageGrid.getCellPatternId(col, row);
+                this.padGrid[col][row].setCurrentPageFill('url(#' + cellFillPatternId + ')');
+            }
+        }
+    }
+
+    setNextImage(svgImageGrid) {
+        for (let row = 0; row < this.numRows; row++) {
+            for (let col = 0; col < this.numCols; col++) {
+                const cellFillPatternId = svgImageGrid.getCellPatternId(col, row);
+                this.padGrid[col][row].setNextPageFill('url(#' + cellFillPatternId + ')');
             }
         }
     }
 
     getElement() {
-        return this.container;
-    }
-
-    getNumPads() {
-        const numCols = this.padGrid.length;
-        // All row arrays within padGrid will be of the same length, so we
-        // can just use the first
-        const numRows = this.padGrid[0].length;
-
-        return numCols * numRows;
+        return this.containerDiv;
     }
 }
 
@@ -109,9 +233,6 @@ class FlipPad {
         this.nextTopFlap = nextTopFlap;
         this.nextBottomFlap = nextBottomFlap;
 
-        this.setCurrentPageColor('red');
-        this.setNextPageColor('blue');
-
         this.setRestingFlapDepths();
 
         this.isFlipping = false;
@@ -138,6 +259,7 @@ class FlipPad {
 
             this.setRestingFlapDepths();
 
+            // Run 'on finished' callback argument, if given
             if (onFlipFinishedCallback != null) {
                 onFlipFinishedCallback();
             }
@@ -154,14 +276,14 @@ class FlipPad {
         this.nextBottomFlap.unrotate();
     }
 
-    setNextPageColor(color) {
-        this.nextTopFlap.setColor(color);
-        this.nextBottomFlap.setColor(color);
+    setNextPageFill(fillString) {
+        this.nextTopFlap.setFill(fillString);
+        this.nextBottomFlap.setFill(fillString);
     }
 
-    setCurrentPageColor(color) {
-        this.currentTopFlap.setColor(color);
-        this.currentBottomFlap.setColor(color);
+    setCurrentPageFill(fillString) {
+        this.currentTopFlap.setFill(fillString);
+        this.currentBottomFlap.setFill(fillString);
     }
 
     setRestingFlapDepths() {
@@ -223,9 +345,9 @@ class Flap {
         svg.style.position           = 'absolute';
         svg.style.backfaceVisibility = 'hidden';
 
-        // TODO: using this causes weird rendering behaviour, previous colours
-        // are shown when they shouldn't! Why?
-        // svg.style.willChange         = 'transform';
+        // TODO: using this can sometimes cause weird rendering behaviour,
+        // keep an eye on it and find out why
+        svg.style.willChange         = 'transform';
     }
 
     // Creates a string of coordinates used to create an SVG 'polygon' element
@@ -278,21 +400,20 @@ class Flap {
         return this.svgElement;
     }
 
-    setColor(colorString) {
-        this.polygon.style.fill = colorString;
+    setFill(fillString) {
+        this.polygon.style.fill = fillString;
     }
 }
 
+// Demo code creating a flipboard capable of displaying a series of images
+
 const container = document.getElementsByClassName('container');
-const board = new Flipboard(8, 8, 80);
 
-container[0].appendChild(board.getElement());
+const imageUrls = ['image/1.jpg', 'image/2.jpg', 'image/3.jpg', 'image/4.jpg'];
+const flipboard = new Flipboard(6, 4, 100, imageUrls);
 
-function doTheFlip() {
-    board.flip();
-}
+container[0].appendChild(flipboard.getElement());
 
-function getRandomColor() {
-    // One liner for random hex colour, nicked from SO somewhere
-    return '#' + (0x1000000 + (Math.random()) * 0xffffff).toString(16).substr(1,6);
+function flip() {
+    flipboard.flip();
 }

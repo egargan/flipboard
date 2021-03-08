@@ -1,7 +1,12 @@
 body {
     font-family: 'Roboto', sans-serif;
+    padding: 20px;
 }
 
-.container {
-    padding: 20px;
+.flipboard {
+    margin: 10px;
+}
+
+svg {
+    position: absolute;
 }
