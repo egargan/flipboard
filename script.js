@@ -1,3 +1,98 @@
+// Controls a Flipboard instance, providing it with the image data to display,
+// and regularly triggering transitions between the images, making sure
+// the 'current' and 'next' images are set accordingly so they're displayed
+// in sequence
+class Cycler {
+    constructor(flipboard, cyclePeriodSeconds, imageUrlList) {
+        this.imageList = [];
+        this.flipboard = flipboard;
+
+        const gridGap = flipboard.getGridGap();
+        const cellSize = flipboard.getPadSize();
+        const numCols = flipboard.getNumCols();
+        const numRows = flipboard.getNumRows();
+
+        for (let i = 0; i < imageUrlList.length; i++) {
+            // TODO: improve ID naming here - use filename?
+            const svgImageGrid = new SvgImageGrid({
+                imageUrl: imageUrlList[i],
+                cellSize: cellSize,
+                numCols: numCols,
+                numRows: numRows,
+                gridGap: gridGap,
+                gridId: i
+            });
+
+            const patternsDefs = svgImageGrid.createPatternsDefs();
+            flipboard.getPatternsDiv().appendChild(patternsDefs);
+
+            this.imageList.push(svgImageGrid);
+        }
+
+        this.currentImageIndex = 0;
+
+        // TODO: this assumes >= 2 images have been given! Handle case where
+        // e.g. 1 image was given
+        flipboard.setCurrentFill(this.imageList[0]);
+        flipboard.setNextFill(this.imageList[1]);
+
+        this.cyclePeriodMilliseconds = cyclePeriodSeconds * 1000;
+        this.isCycling = false;
+    }
+
+    enableCycling() {
+        if (this.cycleInterval != null) {
+            clearInterval(this.cycleInterval);
+        }
+
+        const cyclerRef = this;
+
+        this.cycleInterval = setInterval(
+            () => { cyclerRef.cycle(); },
+            this.cyclePeriodMilliseconds
+        );
+
+        this.isCycling = true;
+    }
+
+    disableCycling() {
+        if (this.cycleInterval != null) {
+            clearInterval(this.cycleInterval);
+        }
+
+        this.isCycling = false;
+    }
+
+    manualCycle() {
+        this.cycle();
+
+        // If already cycling, re-enable cycling to reset timer interval
+        if (this.isCycling) {
+            this.enableCycling();
+        }
+    }
+
+    cycle() {
+        this.flipboard.flip(() => {
+            this.incrementCurrentImageIndex();
+            flipboard.setNextFill(this.imageList[this.getNextImageIndex()]);
+        });
+    }
+
+    getNextImageIndex() {
+        return (this.currentImageIndex + 1) % this.imageList.length;
+    }
+
+    incrementCurrentImageIndex() {
+        if (this.currentImageIndex >= this.imageList.length - 1) {
+            this.currentImageIndex = 0;
+        }
+        else {
+            this.currentImageIndex++;
+        }
+    }
+}
+
 // Segments a given image into a grid of square tiles, creating a list of
 // SVG 'patterns' to be referenced in each tile in a grid of SVG elements
 class SvgImageGrid {
@@ -100,13 +195,14 @@ class Flipboard {
     constructor({
         numCols,
         numRows,
-        imageUrlList,
         padSize = 100,
         gridGap = 4,
         cornerRadius = 5,
     }) {
         const containerDiv = document.createElement('div');
 
+        // Create div for storing SVG <pattern> elements, required by SvgImageGrid instances
+        // TODO: should it be Flipboard's job to create and maintain this?
         const patternsDiv = document.createElement('div');
         patternsDiv.style.height = '0px';
         patternsDiv.style.width = '0px';
@@ -125,33 +221,14 @@ class Flipboard {
             }
         }
 
-        this.imageGrids = [];
-
-        for (let i = 0; i < imageUrlList.length; i++) {
-            // TODO: improve ID naming here - use filename?
-            const svgImageGrid = new SvgImageGrid({
-                imageUrl: imageUrlList[i],
-                cellSize: padSize,
-                numCols: numCols,
-                numRows: numRows,
-                gridGap: gridGap,
-                gridId: i
-            });
-
-            const patternsDefs = svgImageGrid.createPatternsDefs();
-            patternsDiv.appendChild(patternsDefs);
-
-            this.imageGrids.push(svgImageGrid);
-        }
-
         this.containerDiv = containerDiv;
+        this.patternsDiv = patternsDiv;
         this.padGrid = padGrid;
 
+        this.gridGap = gridGap;
+        this.padSize = padSize;
         this.numCols = numCols;
         this.numRows = numRows;
-
-        this.setCurrentFill(this.imageGrids[0]);
-        this.setNextFill(this.imageGrids[1]);
     }
 
     createPadGrid(numCols, numRows, padSize, cornerRadius) {
@@ -188,27 +265,20 @@ class Flipboard {
         return gridDiv;
     }
 
-    flip() {
+    flip(onTransitionEndCallback) {
         const numPads = this.numRows * this.numCols;
         let numPadsFlipped = 0;
-
-        const onLastPadFlippedCallback = () => {
-            // TODO: change next image to next in series here?
-        }
 
         for (let rowArray of this.padGrid) {
             for (let flipPad of rowArray) {
                 numPadsFlipped++;
 
-                // TODO: have this 'cascading flip' effect be configurable
-                window.setTimeout(() => {
-                    if (numPadsFlipped >= numPads) {
-                        flipPad.flip(onLastPadFlippedCallback);
-                    }
-                    else {
-                        flipPad.flip();
-                    }
-                }, (Math.random() * 400) + (numPadsFlipped * 40));
+                if (numPadsFlipped >= numPads) {
+                    flipPad.flip(onTransitionEndCallback);
+                }
+                else {
+                    flipPad.flip();
+                }
             }
         }
     }
@@ -231,8 +301,28 @@ class Flipboard {
         }
     }
 
+    getPadSize() {
+        return this.padSize;
+    }
+
+    getNumCols() {
+        return this.numCols;
+    }
+
+    getNumRows() {
+        return this.numRows;
+    }
+
+    getGridGap() {
+        return this.gridGap;
+    }
+
     getElement() {
         return this.containerDiv;
+    }
+
+    getPatternsDiv() {
+        return this.patternsDiv;
     }
 }
 
@@ -496,14 +586,15 @@ const container = document.getElementsByClassName('container');
 const flipboard = new Flipboard({
     numCols: 6,
     numRows: 4,
-    imageUrlList: ['image/1.jpg', 'image/2.jpg', 'image/3.jpg', 'image/4.jpg'],
     padSize: 100,
     gridGap: 4,
     cornerRadius: 5
 });
 
+const cycler = new Cycler(flipboard, 4, ['image/1.jpg', 'image/2.jpg', 'image/3.jpg', 'image/4.jpg']);
+
 container[0].appendChild(flipboard.getElement());
 
 function flip() {
-    flipboard.flip();
+    cycler.manualCycle();
 }
