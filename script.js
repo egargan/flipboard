@@ -4,6 +4,7 @@
 // TODO:
 // - Offer transition pattern presets, e.g. 'standard', 'simultaneous'
 // - Accept 2d equations describing delay wrt. grid row and column
+// - Provide 'newTable' method that recreates delay table with new timings
 class TransitionComposer {
     constructor({
         numRows,
@@ -99,6 +100,8 @@ class Cycler {
                 gridId: i
             });
 
+            // TODO: this smells, don't like 1. pushing elements to flipboard's
+            // pattern's div, 2. creating pattern defs here
             const patternsDefs = svgImageGrid.createPatternsDefs();
             flipboard.getPatternsDiv().appendChild(patternsDefs);
 
@@ -566,6 +569,7 @@ class Flap {
         // TODO: using this can sometimes cause weird rendering behaviour,
         // keep an eye on it and find out why
         svg.style.willChange         = 'transform';
+        svg.style.willChange         = 'z-index';
     }
 
     getPointsStringFromOrientation(orientation, size, cornerRadius) {
@@ -685,6 +689,8 @@ const container = document.getElementsByClassName('container');
 const composer = new TransitionComposer({
     numCols: 6,
     numRows: 4,
+    rowCoeff: 50,
+    colCoeff: 50,
     maxVariation: 600,
 });
 
@@ -697,7 +703,11 @@ const flipboard = new Flipboard({
     transitionComposer: composer,
 });
 
-const cycler = new Cycler(flipboard, 4, ['image/1.jpg', 'image/2.jpg', 'image/3.jpg', 'image/4.jpg']);
+const cycler = new Cycler(
+    flipboard,
+    4,
+    ['image/1.jpg', 'image/2.jpg', 'image/3.jpg', 'image/4.jpg']
+);
 
 container[0].appendChild(flipboard.getElement());
 
