@@ -10,9 +10,9 @@ class SvgImageGrid {
         );
 
         this.gridId = gridId;
-
         this.numCols = numCols;
         this.numRows = numRows;
+        this.cellSize = cellSize;
     }
 
     // Creates the list of pattern elements for each tile in the grid-segmented
@@ -35,11 +35,13 @@ class SvgImageGrid {
 
                 pattern.id = this.getCellPatternId(col, row);
 
-                pattern.setAttribute('x', '-' + col);
-                pattern.setAttribute('y', '-' + row);
+                pattern.setAttribute('patternUnits', 'userSpaceOnUse');
 
-                pattern.setAttribute('width', this.numCols);
-                pattern.setAttribute('height', this.numRows);
+                pattern.setAttribute('x', '-' + col * this.cellSize);
+                pattern.setAttribute('y', '-' + row * this.cellSize);
+
+                pattern.setAttribute('width', this.numCols * this.cellSize);
+                pattern.setAttribute('height', this.numRows * this.cellSize);
 
                 pattern.appendChild(this.patternImage.cloneNode(false));
 
