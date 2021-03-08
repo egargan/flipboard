@@ -1,18 +1,23 @@
 // Segments a given image into a grid of square tiles, creating a list of
 // SVG 'patterns' to be referenced in each tile in a grid of SVG elements
 class SvgImageGrid {
-    constructor(imageUrl, cellSize, numCols, numRows, gridId) {
-        const imageWidth = numCols * cellSize;
-        const imageHeight = numRows * cellSize;
+    constructor(imageUrl, cellSize, numCols, numRows, gridGap, gridId) {
+        const imageWidth = numCols * cellSize + ((numCols - 1) * gridGap);
+        const imageHeight = numRows * cellSize + ((numRows - 1) * gridGap);
 
         this.patternImage = this.createPatternImage(
             imageUrl, imageWidth, imageHeight
         );
 
         this.gridId = gridId;
+
+        this.gridGap = gridGap;
         this.numCols = numCols;
         this.numRows = numRows;
         this.cellSize = cellSize;
+
+        this.imageWidth = imageWidth;
+        this.imageHeight = imageHeight;
     }
 
     // Creates the list of pattern elements for each tile in the grid-segmented
@@ -37,11 +42,14 @@ class SvgImageGrid {
 
                 pattern.setAttribute('patternUnits', 'userSpaceOnUse');
 
-                pattern.setAttribute('x', '-' + col * this.cellSize);
-                pattern.setAttribute('y', '-' + row * this.cellSize);
+                const xOffset = col * this.cellSize + (col * this.gridGap);
+                const yOffset = row * this.cellSize + (row * this.gridGap);
 
-                pattern.setAttribute('width', this.numCols * this.cellSize);
-                pattern.setAttribute('height', this.numRows * this.cellSize);
+                pattern.setAttribute('x', '-' + xOffset);
+                pattern.setAttribute('y', '-' + yOffset);
+
+                pattern.setAttribute('width', this.imageWidth);
+                pattern.setAttribute('height', this.imageHeight);
 
                 pattern.appendChild(this.patternImage.cloneNode(false));
 
@@ -76,14 +84,14 @@ class SvgImageGrid {
 // A grid of flipbook-style tiles that together display a series of images,
 // shown one after the other, transitioned between by 'flipping' the flipbook cells
 class Flipboard {
-    constructor(numCols, numRows, padSize, imageUrlList) {
+    constructor(numCols, numRows, padSize, gridGap, imageUrlList) {
         const containerDiv = document.createElement('div');
 
         const patternsDiv = document.createElement('div');
         patternsDiv.style.height = '0px';
         patternsDiv.style.width = '0px';
 
-        const gridDiv = this.createGridDiv(numCols, '4px');
+        const gridDiv = this.createGridDiv(numCols, gridGap + 'px');
 
         containerDiv.appendChild(patternsDiv);
         containerDiv.appendChild(gridDiv);
@@ -102,7 +110,7 @@ class Flipboard {
         for (let i = 0; i < imageUrlList.length; i++) {
             // TODO: improve ID naming here - use filename?
             const svgImageGrid = new SvgImageGrid(
-                imageUrlList[i], padSize, numCols, numRows, i
+                imageUrlList[i], padSize, numCols, numRows, gridGap, i
             );
 
             const patternsDefs = svgImageGrid.createPatternsDefs();
@@ -458,7 +466,7 @@ class Flap {
 const container = document.getElementsByClassName('container');
 
 const imageUrls = ['image/1.jpg', 'image/2.jpg', 'image/3.jpg', 'image/4.jpg'];
-const flipboard = new Flipboard(6, 4, 100, imageUrls);
+const flipboard = new Flipboard(6, 4, 100, 3, imageUrls);
 
 container[0].appendChild(flipboard.getElement());
 
