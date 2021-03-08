@@ -1,3 +1,79 @@
+// Represents a grid of delay timings that a Flipboard looks-up and applies
+// to its FlipPads' transitions
+//
+// TODO:
+// - Offer transition pattern presets, e.g. 'standard', 'simultaneous'
+// - Accept 2d equations describing delay wrt. grid row and column
+class TransitionComposer {
+    constructor({
+        numRows,
+        numCols,
+        rowCoeff = 50,
+        colCoeff = 50,
+        maxVariation = 100,
+    }) {
+        const delayTable = [];
+
+        let maxDelay = 0;
+        let maxDelayCell = [0, 0];
+
+        for (let col = 0; col < numCols; col++) {
+            const rowArray = [];
+
+            for (let row = 0; row < numRows; row++) {
+                const delay = Math.floor(
+                    (row * rowCoeff) + (col * colCoeff)
+                    + (Math.random() * maxVariation)
+                );
+
+                // Keep track of max delay time in grid, Flipboard
+                // needs to know this value
+                if (delay >= maxDelay) {
+                    maxDelayCell = [col, row];
+                    maxDelay = delay;
+                }
+
+                rowArray.push(delay);
+            }
+
+            delayTable.push(rowArray);
+        }
+
+        this.delayTable = delayTable;
+        this.numRows = numRows;
+        this.numCols = numCols;
+
+        this.maxDelayCell = maxDelayCell;
+    }
+
+    getDelay(row, col) {
+        return this.delayTable[col][row];
+    }
+
+    // Returns a 2-length array for the X (col) and Y (row) position of the
+    // delay table cell with the largest delay
+    getMaxDelayCell() {
+        return this.maxDelayCell;
+    }
+
+    printTable() {
+        const cellCharWidth = this.maxDelay.length;
+
+        for (let col = 0; col < this.numCols; col++) {
+            let rowString = '';
+
+            for (let row = 0; row < this.numRows; row++) {
+                const cellString = (this.delayTable[col][row] + (' '.repeat(cellCharWidth)))
+                    .slice(0, cellCharWidth);
+
+                rowString += ' ' + cellString;
+            }
+
+            console.log(rowString)
+        }
+    }
+}
+
 // Controls a Flipboard instance, providing it with the image data to display,
 // and regularly triggering transitions between the images, making sure
 // the 'current' and 'next' images are set accordingly so they're displayed
@@ -198,6 +274,8 @@ class Flipboard {
         padSize = 100,
         gridGap = 4,
         cornerRadius = 5,
+        // TODO: provide default here - default TransitionComposer state?
+        transitionComposer = null,
     }) {
         const containerDiv = document.createElement('div');
 
@@ -220,6 +298,8 @@ class Flipboard {
                 gridDiv.appendChild(pad.getElement());
             }
         }
+
+        this.transitionComposer = transitionComposer;
 
         this.containerDiv = containerDiv;
         this.patternsDiv = patternsDiv;
@@ -266,14 +346,18 @@ class Flipboard {
     }
 
     flip(onTransitionEndCallback) {
-        const numPads = this.numRows * this.numCols;
-        let numPadsFlipped = 0;
+        const [maxDelayCol, maxDelayRow] = this.transitionComposer.getMaxDelayCell();
 
-        for (let rowArray of this.padGrid) {
-            for (let flipPad of rowArray) {
-                numPadsFlipped++;
+        for (let row = 0; row < this.numRows; row++) {
+            for (let col = 0; col < this.numCols; col++) {
+                const flipPad = this.padGrid[col][row];
 
-                if (numPadsFlipped >= numPads) {
+                const delay = this.transitionComposer.getDelay(row, col);
+                flipPad.setTransitionDelay(delay);
+
+                // When we encounter the cell with the largest delay, have it
+                // call the callback we're given when it's finished its transition
+                if (row == maxDelayRow && col == maxDelayCol) {
                     flipPad.flip(onTransitionEndCallback);
                 }
                 else {
@@ -428,6 +512,11 @@ class FlipPad {
         this.currentBottomFlap.sendToBack();
     }
 
+    setTransitionDelay(delayMilliseconds) {
+        this.currentTopFlap.setTransitionDelay(delayMilliseconds);
+        this.nextBottomFlap.setTransitionDelay(delayMilliseconds);
+    }
+
     swapFlapReferences() {
         const tempBottomFlap = this.currentBottomFlap;
         const tempTopFlap = this.currentTopFlap;
@@ -567,7 +656,7 @@ class Flap {
     }
 
     enableTransition() {
-        this.svgElement.style.transition = 'transform 1s';
+        this.svgElement.style.transition = 'transform 1s ease ' + this.delay + 'ms';
     }
 
     getElement() {
@@ -577,18 +666,29 @@ class Flap {
     setFill(fillString) {
         this.svgPath.style.fill = fillString;
     }
+
+    setTransitionDelay(delayMilliseconds) {
+        this.delay = delayMilliseconds;
+    }
 }
 
 // Demo code creating a flipboard capable of displaying a series of images
 
 const container = document.getElementsByClassName('container');
 
+const composer = new TransitionComposer({
+    numCols: 6,
+    numRows: 4,
+    maxVariation: 600,
+});
+
 const flipboard = new Flipboard({
     numCols: 6,
     numRows: 4,
     padSize: 100,
     gridGap: 4,
-    cornerRadius: 5
+    cornerRadius: 5,
+    transitionComposer: composer,
 });
 
 const cycler = new Cycler(flipboard, 4, ['image/1.jpg', 'image/2.jpg', 'image/3.jpg', 'image/4.jpg']);
