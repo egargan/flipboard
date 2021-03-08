@@ -128,7 +128,7 @@ class Flipboard {
             const rowArray = [];
 
             for (let row = 0; row < numRows; row++) {
-                const pad = new FlipPad(padSize, padSize);
+                const pad = new FlipPad(padSize);
                 rowArray.push(pad);
             }
 
@@ -204,23 +204,22 @@ class Flipboard {
 // A collection of stacked triangular SVG elements that form a sort of endless
 // flipbook, turned through using the 'flip' method
 class FlipPad {
-    constructor(width, height) {
-        this.width = width;
-        this.height = height;
+    constructor(size) {
+        this.size = size;
 
         // div used as container element for SVGs
         this.element = document.createElement('div');
 
-        this.element.style.height = width + 'px';
-        this.element.style.width = height + 'px';
+        this.element.style.height = size + 'px';
+        this.element.style.width = size + 'px';
         this.element.classList.add('tile');
 
         // These 'current' and 'next' flaps refer to the two current visible flaps,
         // and those folded up and hidden, to be displayed next on this.flip()
-        const currentTopFlap = new Flap(Orientation.TOP, width, height);
-        const currentBottomFlap = new Flap(Orientation.BOTTOM, width, height);
-        const nextBottomFlap = new Flap(Orientation.BOTTOM, width, height);
-        const nextTopFlap = new Flap(Orientation.TOP, width, height);
+        const currentTopFlap = new Flap(Orientation.TOP, size);
+        const currentBottomFlap = new Flap(Orientation.BOTTOM, size);
+        const nextBottomFlap = new Flap(Orientation.BOTTOM, size);
+        const nextTopFlap = new Flap(Orientation.TOP, size);
 
         // The next bottom flap is currently unfolded, beneath the current bottom flap.
         // We want to it to be folded facing away from us behind the current top flap.
@@ -327,22 +326,21 @@ const Orientation = {
 
 // Represents a single triangle SVG element that make up the pages of a FlipPad
 class Flap {
-    constructor(orientation, width, height) {
-        const pointsString = this.getPointsStringFromOrientation(orientation, width, height);
-
+    constructor(orientation, size) {
         const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
 
-        svg.classList.add('flipper');
-        svg.style.width = width;
-        svg.style.height = height;
+        svg.style.width = size;
+        svg.style.height = size;
 
-        const polygon = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-        polygon.setAttribute('points', pointsString);
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
 
-        svg.appendChild(polygon);
+        const pathString = this.getPointsStringFromOrientation(orientation, size, 10);
+        path.setAttribute('d', pathString);
 
+        svg.appendChild(path);
+
+        this.svgPath = path;
         this.svgElement = svg;
-        this.polygon = polygon;
 
         this.enableTransition();
         svg.style.position           = 'absolute';
@@ -353,16 +351,61 @@ class Flap {
         svg.style.willChange         = 'transform';
     }
 
-    // Creates a string of coordinates used to create an SVG 'polygon' element
-    getPointsStringFromOrientation(orientation, width, height) {
+    getPointsStringFromOrientation(orientation, size, cornerRadius) {
         if (orientation === Orientation.TOP) {
-            return '0 0, ' + width + ' 0, 0 ' + height;
+            return this.createTopFlapPathString(size, cornerRadius);
         }
         else if (orientation === Orientation.BOTTOM) {
-            return width + ' 0, ' + width + ' ' + height + ', 0 ' + height;
+            return this.createBottomFlapPathString(size, cornerRadius);
         }
 
         console.error('Invalid orientation');
+    }
+
+    createBottomFlapPathString(sideLength, cornerRadius) {
+        const edgeLength = sideLength - cornerRadius * 2;
+        const root2 = Math.sqrt(2);
+        const radiusOverRt2 = cornerRadius / root2;
+
+        let pathString = '';
+
+        pathString += 'm' + (edgeLength+cornerRadius) + ' ' + sideLength;
+        pathString += 'h' + (-edgeLength);
+        pathString += 'a' + cornerRadius + ' ' + cornerRadius + ' 0 0 1 '
+            + (-radiusOverRt2) + ' ' + (-(cornerRadius-radiusOverRt2));
+        pathString += 'l' + (edgeLength+(cornerRadius*root2)) + ' '
+            + (-(edgeLength+(cornerRadius*root2)));
+        pathString += 'a' + cornerRadius + ' ' + cornerRadius + ' 0 0 1 '
+            + (cornerRadius-radiusOverRt2) + ' ' + radiusOverRt2;
+        pathString += 'v' + edgeLength;
+        pathString += 'a' + cornerRadius + ' ' + cornerRadius + ' 0 0 1 '
+            + (-cornerRadius) + ' ' + cornerRadius;
+        pathString += 'z';
+
+        return pathString;
+    }
+
+    createTopFlapPathString(sideLength, cornerRadius) {
+        const edgeLength = sideLength - cornerRadius * 2;
+        const root2 = Math.sqrt(2);
+        const radiusOverRt2 = cornerRadius / root2;
+
+        let pathString = '';
+
+        pathString += 'm' + cornerRadius + ' 0';
+        pathString += 'h' + edgeLength;
+        pathString += 'a' + cornerRadius + ' ' + cornerRadius + ' 0 0 1 '
+            + radiusOverRt2 + ' ' + (cornerRadius-radiusOverRt2);
+        pathString += 'l' + -(edgeLength+(cornerRadius*root2)) + ' '
+            + (edgeLength+(cornerRadius*root2));
+        pathString += 'a' + cornerRadius + ' ' + cornerRadius + ' 0 0 1 '
+            + -(cornerRadius-radiusOverRt2) + ' ' + (-radiusOverRt2);
+        pathString += 'v' + (-edgeLength);
+        pathString += 'a' + cornerRadius + ' ' + cornerRadius + ' 0 0 1 '
+            + cornerRadius + ' ' + (-cornerRadius);
+        pathString += 'z';
+
+        return pathString;
     }
 
     // Rotates the triangle 180 degrees about a NE axis
@@ -404,7 +447,7 @@ class Flap {
     }
 
     setFill(fillString) {
-        this.polygon.style.fill = fillString;
+        this.svgPath.style.fill = fillString;
     }
 }
 
