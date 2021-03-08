@@ -4,10 +4,4 @@ body {
 
 .container {
     padding: 20px;
-    display: flex;
-    flex-wrap: wrap;
-}
-
-.tile {
-    margin: 4px;
 }

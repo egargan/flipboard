@@ -1,3 +1,79 @@
+class Flipboard {
+    constructor(numCols, numRows, padSize) {
+        const container = document.createElement('div');
+        container.style.display = 'grid';
+
+        container.style.gridTemplateColumns = 'repeat(' + numCols + ', min-content)';
+        container.style.columnGap = '5px';
+        container.style.rowGap = '5px';
+
+        const numCells = numCols * numRows;
+        const padGrid = [];
+
+        for (let col = 0; col < numCols; col++) {
+            const rowArray = [];
+
+            for (let row = 0; row < numRows; row++) {
+                const pad = new FlipPad(padSize, padSize);
+
+                container.appendChild(pad.getElement());
+                rowArray.push(pad);
+            }
+
+            padGrid.push(rowArray);
+        }
+
+        this.container = container;
+        this.padGrid = padGrid;
+    }
+
+    flip() {
+        const nextColor = getRandomColor();
+
+        const onLastPadFlippedCallback = () => {
+            this.setNextColor(nextColor);
+        }
+
+        const numPads = this.getNumPads();
+        let numPadsFlipped = 0;
+
+        for (let rowArray of this.padGrid) {
+            for (let flipPad of rowArray) {
+                numPadsFlipped++;
+
+                // When the last pad is flipped, have it call our callback
+                if (numPadsFlipped >= numPads) {
+                    flipPad.flip(onLastPadFlippedCallback);
+                }
+                else {
+                    flipPad.flip();
+                }
+            }
+        }
+    }
+
+    setNextColor(color) {
+        for (let rowArray of this.padGrid) {
+            for (let flipPad of rowArray) {
+                flipPad.setNextPageColor(color);
+            }
+        }
+    }
+
+    getElement() {
+        return this.container;
+    }
+
+    getNumPads() {
+        const numCols = this.padGrid.length;
+        // All row arrays within padGrid will be of the same length, so we
+        // can just use the first
+        const numRows = this.padGrid[0].length;
+
+        return numCols * numRows;
+    }
+}
+
 // A collection of stacked triangular SVG elements that form a sort of endless
 // flipbook, turned through using the 'flip' method
 class FlipPad {
@@ -21,7 +97,7 @@ class FlipPad {
 
         // The next bottom flap is currently unfolded, beneath the current bottom flap.
         // We want to it to be folded facing away from us behind the current top flap.
-        nextBottomFlap.flip();
+        nextBottomFlap.rotate();
 
         this.element.appendChild(currentTopFlap.getElement());
         this.element.appendChild(currentBottomFlap.getElement());
@@ -34,13 +110,14 @@ class FlipPad {
         this.nextBottomFlap = nextBottomFlap;
 
         this.setCurrentPageColor('red');
+        this.setNextPageColor('blue');
 
         this.setRestingFlapDepths();
 
         this.isFlipping = false;
     }
 
-    flip() {
+    flip(onFlipFinishedCallback) {
         if (this.isFlipping) {
             return;
         }
@@ -53,13 +130,17 @@ class FlipPad {
             this.currentBottomFlap.disableTransition();
             this.currentTopFlap.disableTransition();
 
-            this.currentBottomFlap.flip();
-            this.currentTopFlap.unflip();
+            this.currentBottomFlap.rotate();
+            this.currentTopFlap.unrotate();
 
             // Hidden current flaps *become* next flaps
             this.swapFlapReferences();
 
             this.setRestingFlapDepths();
+
+            if (onFlipFinishedCallback != null) {
+                onFlipFinishedCallback();
+            }
 
             this.isFlipping = false;
         }
@@ -69,8 +150,8 @@ class FlipPad {
 
         this.setTransitionFlapDepths();
 
-        this.currentTopFlap.flip(onTransitionEndCallback);
-        this.nextBottomFlap.unflip();
+        this.currentTopFlap.rotate(onTransitionEndCallback);
+        this.nextBottomFlap.unrotate();
     }
 
     setNextPageColor(color) {
@@ -141,7 +222,10 @@ class Flap {
         this.enableTransition();
         svg.style.position           = 'absolute';
         svg.style.backfaceVisibility = 'hidden';
-        svg.style.willChange         = 'transform';
+
+        // TODO: using this causes weird rendering behaviour, previous colours
+        // are shown when they shouldn't! Why?
+        // svg.style.willChange         = 'transform';
     }
 
     // Creates a string of coordinates used to create an SVG 'polygon' element
@@ -157,7 +241,7 @@ class Flap {
     }
 
     // Rotates the triangle 180 degrees about a NE axis
-    flip(onTransitionEndCallback) {
+    rotate(onTransitionEndCallback) {
         this.svgElement.style.transform = 'rotate3d(-1, 1, 0, 180deg)';
 
         if (onTransitionEndCallback != null) {
@@ -166,7 +250,7 @@ class Flap {
     }
 
     // Resets the transform performed by 'flip'
-    unflip(onTransitionEndCallback) {
+    unrotate(onTransitionEndCallback) {
         this.svgElement.style.transform = 'rotate3d(-1, 1, 0, 0deg)';
 
         if (onTransitionEndCallback != null) {
@@ -199,29 +283,16 @@ class Flap {
     }
 }
 
-// Demo code for a board of 50 FlipPads, where each 'page' shows a different colour
-
-const board = [];
 const container = document.getElementsByClassName('container');
+const board = new Flipboard(8, 8, 80);
 
-for (let i = 0; i < 50; i++) {
-    const pad = new FlipPad(50, 50);
-    board.push(pad);
-    container[0].appendChild(pad.getElement());
-}
+container[0].appendChild(board.getElement());
 
-function flip() {
-    const color = getRandomColor();
-    for (let i = 0; i < 50; i++) {
-        setTimeout(() => {
-            board[i].setNextPageColor(color);
-            board[i].flip();
-        }, i * 30);
-    }
+function doTheFlip() {
+    board.flip();
 }
 
 function getRandomColor() {
     // One liner for random hex colour, nicked from SO somewhere
     return '#' + (0x1000000 + (Math.random()) * 0xffffff).toString(16).substr(1,6);
 }
-
