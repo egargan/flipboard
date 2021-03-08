@@ -84,7 +84,7 @@ class SvgImageGrid {
 // A grid of flipbook-style tiles that together display a series of images,
 // shown one after the other, transitioned between by 'flipping' the flipbook cells
 class Flipboard {
-    constructor(numCols, numRows, padSize, gridGap, imageUrlList) {
+    constructor(numCols, numRows, padSize, gridGap, cornerRadius, imageUrlList) {
         const containerDiv = document.createElement('div');
 
         const patternsDiv = document.createElement('div');
@@ -96,7 +96,7 @@ class Flipboard {
         containerDiv.appendChild(patternsDiv);
         containerDiv.appendChild(gridDiv);
 
-        const padGrid = this.createPadGrid(numCols, numRows, padSize);
+        const padGrid = this.createPadGrid(numCols, numRows, padSize, cornerRadius);
 
         for (let row = 0; row < numRows; row++) {
             for (let col = 0; col < numCols; col++) {
@@ -129,7 +129,7 @@ class Flipboard {
         this.setNextImage(this.imageGrids[1]);
     }
 
-    createPadGrid(numCols, numRows, padSize) {
+    createPadGrid(numCols, numRows, padSize, cornerRadius) {
         const padGrid = [];
 
         // Iterate over rows + columns 'in reverse', i.e. for each row in each column,
@@ -138,7 +138,7 @@ class Flipboard {
             const rowArray = [];
 
             for (let row = 0; row < numRows; row++) {
-                const pad = new FlipPad(padSize);
+                const pad = new FlipPad(padSize, cornerRadius);
                 rowArray.push(pad);
             }
 
@@ -214,7 +214,7 @@ class Flipboard {
 // A collection of stacked triangular SVG elements that form a sort of endless
 // flipbook, turned through using the 'flip' method
 class FlipPad {
-    constructor(size) {
+    constructor(size, cornerRadius) {
         this.size = size;
 
         // div used as container element for SVGs
@@ -226,10 +226,10 @@ class FlipPad {
 
         // These 'current' and 'next' flaps refer to the two current visible flaps,
         // and those folded up and hidden, to be displayed next on this.flip()
-        const currentTopFlap = new Flap(Orientation.TOP, size);
-        const currentBottomFlap = new Flap(Orientation.BOTTOM, size);
-        const nextBottomFlap = new Flap(Orientation.BOTTOM, size);
-        const nextTopFlap = new Flap(Orientation.TOP, size);
+        const currentTopFlap = new Flap(Orientation.TOP, size, cornerRadius);
+        const currentBottomFlap = new Flap(Orientation.BOTTOM, size, cornerRadius);
+        const nextBottomFlap = new Flap(Orientation.BOTTOM, size, cornerRadius);
+        const nextTopFlap = new Flap(Orientation.TOP, size, cornerRadius);
 
         // The next bottom flap is currently unfolded, beneath the current bottom flap.
         // We want to it to be folded facing away from us behind the current top flap.
@@ -336,7 +336,7 @@ const Orientation = {
 
 // Represents a single triangle SVG element that make up the pages of a FlipPad
 class Flap {
-    constructor(orientation, size) {
+    constructor(orientation, size, cornerRadius) {
         const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
 
         svg.style.width = size;
@@ -344,7 +344,10 @@ class Flap {
 
         const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
 
-        const pathString = this.getPointsStringFromOrientation(orientation, size, 10);
+        const pathString = this.getPointsStringFromOrientation(
+            orientation, size, cornerRadius
+        );
+
         path.setAttribute('d', pathString);
 
         svg.appendChild(path);
@@ -466,7 +469,7 @@ class Flap {
 const container = document.getElementsByClassName('container');
 
 const imageUrls = ['image/1.jpg', 'image/2.jpg', 'image/3.jpg', 'image/4.jpg'];
-const flipboard = new Flipboard(6, 4, 100, 3, imageUrls);
+const flipboard = new Flipboard(6, 4, 100, 3, 5, imageUrls);
 
 container[0].appendChild(flipboard.getElement());
 
