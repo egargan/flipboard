@@ -5,7 +5,7 @@
 // - Offer transition pattern presets, e.g. 'standard', 'simultaneous'
 // - Accept 2d equations describing delay wrt. grid row and column
 // - Provide 'newTable' method that recreates delay table with new timings
-class TransitionComposer {
+export class TransitionComposer {
     constructor({
         numRows,
         numCols,
@@ -79,7 +79,7 @@ class TransitionComposer {
 // and regularly triggering transitions between the images, making sure
 // the 'current' and 'next' images are set accordingly so they're displayed
 // in sequence
-class Cycler {
+export class Cycler {
     constructor(flipboard, cyclePeriodSeconds, imageUrlList) {
         this.imageList = [];
         this.flipboard = flipboard;
@@ -154,7 +154,7 @@ class Cycler {
     cycle() {
         this.flipboard.flip(() => {
             this.incrementCurrentImageIndex();
-            flipboard.setNextFill(this.imageList[this.getNextImageIndex()]);
+            this.flipboard.setNextFill(this.imageList[this.getNextImageIndex()]);
         });
     }
 
@@ -270,7 +270,7 @@ class SvgImageGrid {
 
 // A grid of flipbook-style tiles that together display a series of images,
 // shown one after the other, transitioned between by 'flipping' the flipbook cells
-class Flipboard {
+export class Flipboard {
     constructor({
         numCols,
         numRows,
@@ -278,7 +278,7 @@ class Flipboard {
         gridGap = 4,
         cornerRadius = 5,
         // TODO: provide default here - default TransitionComposer state?
-        transitionComposer = null,
+        composer = null,
     }) {
         const containerDiv = document.createElement('div');
 
@@ -302,7 +302,7 @@ class Flipboard {
             }
         }
 
-        this.transitionComposer = transitionComposer;
+        this.transitionComposer = composer;
 
         this.containerDiv = containerDiv;
         this.patternsDiv = patternsDiv;
@@ -682,35 +682,3 @@ class Flap {
     }
 }
 
-// Demo code creating a flipboard capable of displaying a series of images
-
-const container = document.getElementsByClassName('container');
-
-const composer = new TransitionComposer({
-    numCols: 6,
-    numRows: 4,
-    rowCoeff: 50,
-    colCoeff: 50,
-    maxVariation: 600,
-});
-
-const flipboard = new Flipboard({
-    numCols: 6,
-    numRows: 4,
-    padSize: 100,
-    gridGap: 4,
-    cornerRadius: 5,
-    transitionComposer: composer,
-});
-
-const cycler = new Cycler(
-    flipboard,
-    4,
-    ['image/1.jpg', 'image/2.jpg', 'image/3.jpg', 'image/4.jpg']
-);
-
-container[0].appendChild(flipboard.getElement());
-
-function flip() {
-    cycler.manualCycle();
-}

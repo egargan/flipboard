@@ -1,0 +1,27 @@
+{
+  "name": "flipboard",
+  "version": "1.0.0",
+  "description": "Builds a grid of SVG elements that displays and transitions between a series of images.",
+  "main": "index.js",
+  "files": ["index.js"],
+  "type": "module",
+  "scripts": {
+    "dev": "rollup --config rollup.config.demo.js --watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/egargan/flipboard.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/egargan/flipboard/issues"
+  },
+  "homepage": "https://github.com/egargan/flipboard#readme",
+  "devDependencies": {
+    "rollup-plugin-commonjs": "^10.1.0",
+    "rollup-plugin-copy": "^3.4.0",
+    "rollup-plugin-node-resolve": "^5.2.0",
+    "rollup-plugin-serve": "^2.0.0"
+  }
+}
